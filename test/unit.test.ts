@@ -213,7 +213,10 @@ describe('Bug 2: getTask uses correct isCompleted read-back', () => {
 describe('Bug 3: listEventsByDateRange uses server-side date filtering', () => {
   it('generates AppleScript with whose start time clause for date range', () => {
     // listEvents with date params generates a whose clause
-    const script = listEvents(null, '2025-06-01T00:00:00Z', '2025-12-31T23:59:59Z', 10, 0);
+    // Naked ISO (no Z): parsed as local time, so component values match
+    // exactly what was typed regardless of host timezone — keeps the test
+    // timezone-agnostic.
+    const script = listEvents(null, '2025-06-01T00:00:00', '2025-12-31T23:59:59', 10, 0);
     expect(script).toContain('whose start time');
     expect(script).toContain('afterDate');
     expect(script).toContain('beforeDate');
@@ -226,7 +229,7 @@ describe('Bug 3: listEventsByDateRange uses server-side date filtering', () => {
   });
 
   it('generates correct date variable construction', () => {
-    const script = listEvents(null, '2025-06-15T14:30:00Z', null, 10, 0);
+    const script = listEvents(null, '2025-06-15T14:30:00', null, 10, 0);
     expect(script).toContain('set year of afterDate to 2025');
     expect(script).toContain('set month of afterDate to 6');
     expect(script).toContain('set day of afterDate to 15');
@@ -235,7 +238,7 @@ describe('Bug 3: listEventsByDateRange uses server-side date filtering', () => {
   });
 
   it('supports offset in date-filtered queries', () => {
-    const script = listEvents(null, '2025-01-01T00:00:00Z', '2025-12-31T23:59:59Z', 10, 5);
+    const script = listEvents(null, '2025-01-01T00:00:00', '2025-12-31T23:59:59', 10, 5);
     expect(script).toContain('set startIdx to 6');
     expect(script).toContain('set endIdx to 15');
   });
@@ -530,7 +533,9 @@ describe('Offset support in search AppleScript templates', () => {
 
 describe('buildAppleScriptDateVar', () => {
   it('generates correct date components from ISO string', () => {
-    const result = buildAppleScriptDateVar('afterDate', '2025-06-15T14:30:00Z');
+    // Naked ISO (no Z) is parsed as local time and emitted as local
+    // components, so the assertions are timezone-agnostic.
+    const result = buildAppleScriptDateVar('afterDate', '2025-06-15T14:30:00');
     expect(result).toContain('set afterDate to current date');
     expect(result).toContain('set year of afterDate to 2025');
     expect(result).toContain('set month of afterDate to 6');
@@ -541,7 +546,7 @@ describe('buildAppleScriptDateVar', () => {
   });
 
   it('handles midnight correctly', () => {
-    const result = buildAppleScriptDateVar('beforeDate', '2025-01-01T00:00:00Z');
+    const result = buildAppleScriptDateVar('beforeDate', '2025-01-01T00:00:00');
     expect(result).toContain('set year of beforeDate to 2025');
     expect(result).toContain('set month of beforeDate to 1');
     expect(result).toContain('set day of beforeDate to 1');
@@ -550,12 +555,25 @@ describe('buildAppleScriptDateVar', () => {
   });
 
   it('sets day to 1 first to avoid month overflow', () => {
-    const result = buildAppleScriptDateVar('d', '2025-12-31T23:59:00Z');
+    const result = buildAppleScriptDateVar('d', '2025-12-31T23:59:00');
     const lines = result.split('\n');
     // "set day of d to 1" should come before "set year of d to ..."
     const dayTo1Idx = lines.findIndex(l => l.includes('set day of d to 1'));
     const yearIdx = lines.findIndex(l => l.includes('set year of d to'));
     expect(dayTo1Idx).toBeLessThan(yearIdx);
+  });
+
+  it('interprets naked ISO as local time (no timezone shift)', () => {
+    // Regression: previously isoToDateComponents parsed naked ISO as local
+    // (correct) but emitted UTC components, shifting the AppleScript date
+    // by the local UTC offset and pulling extra messages into "today" filters.
+    // Naked input → AppleScript variable equal to literal components.
+    const result = buildAppleScriptDateVar('afterDate', '2026-04-29T00:00:00');
+    expect(result).toContain('set year of afterDate to 2026');
+    expect(result).toContain('set month of afterDate to 4');
+    expect(result).toContain('set day of afterDate to 29');
+    expect(result).toContain('set hours of afterDate to 0');
+    expect(result).toContain('set minutes of afterDate to 0');
   });
 });
 
@@ -565,21 +583,21 @@ describe('buildAppleScriptDateVar', () => {
 
 describe('Date filtering in listMessages', () => {
   it('generates whose clause with time received >= afterDate', () => {
-    const script = listMessages(100, 10, 0, false, '2025-06-01T00:00:00Z');
+    const script = listMessages(100, 10, 0, false, '2025-06-01T00:00:00');
     expect(script).toContain('time received ≥ afterDate');
     expect(script).toContain('set year of afterDate to 2025');
     expect(script).toContain('set month of afterDate to 6');
   });
 
   it('generates whose clause with time received <= beforeDate', () => {
-    const script = listMessages(100, 10, 0, false, undefined, '2025-12-31T23:59:59Z');
+    const script = listMessages(100, 10, 0, false, undefined, '2025-12-31T23:59:59');
     expect(script).toContain('time received ≤ beforeDate');
     expect(script).toContain('set year of beforeDate to 2025');
     expect(script).toContain('set month of beforeDate to 12');
   });
 
   it('combines after + before + unreadOnly in whose clause', () => {
-    const script = listMessages(100, 10, 0, true, '2025-01-01T00:00:00Z', '2025-12-31T23:59:59Z');
+    const script = listMessages(100, 10, 0, true, '2025-01-01T00:00:00', '2025-12-31T23:59:59');
     expect(script).toContain('is read is false and time received ≥ afterDate and time received ≤ beforeDate');
   });
 
@@ -592,13 +610,13 @@ describe('Date filtering in listMessages', () => {
 
 describe('Date filtering in searchMessages', () => {
   it('extends whose clause with date filter in phase 1', () => {
-    const script = searchMessages('test', null, 10, 0, '2025-06-01T00:00:00Z');
+    const script = searchMessages('test', null, 10, 0, '2025-06-01T00:00:00');
     // Phase 1 whose clause should include both subject and date
     expect(script).toContain('subject contains "test" and time received ≥ afterDate');
   });
 
   it('includes date check in phase 2 sender loop', () => {
-    const script = searchMessages('test', null, 10, 0, '2025-01-01T00:00:00Z', '2025-12-31T23:59:59Z');
+    const script = searchMessages('test', null, 10, 0, '2025-01-01T00:00:00', '2025-12-31T23:59:59');
     expect(script).toContain('mDateObj < afterDate');
     expect(script).toContain('mDateObj > beforeDate');
   });
@@ -620,12 +638,12 @@ describe('Date filtering in searchMessages', () => {
 
 describe('Date filtering in searchEvents', () => {
   it('extends whose clause with after filter', () => {
-    const script = searchEvents('standup', 10, 0, '2025-06-01T00:00:00Z');
+    const script = searchEvents('standup', 10, 0, '2025-06-01T00:00:00');
     expect(script).toContain('subject contains "standup" and start time ≥ afterDate');
   });
 
   it('extends whose clause with both after and before', () => {
-    const script = searchEvents('standup', 10, 0, '2025-01-01T00:00:00Z', '2025-12-31T23:59:59Z');
+    const script = searchEvents('standup', 10, 0, '2025-01-01T00:00:00', '2025-12-31T23:59:59');
     expect(script).toContain('subject contains "standup" and start time ≥ afterDate and start time ≤ beforeDate');
   });
 });

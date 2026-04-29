@@ -85,8 +85,8 @@ export function buildMailCommand(runtime: Runtime, getOutput: () => OutputOption
         .option('--limit <n>', 'Maximum results to return (1-100)', (v) => parsePositiveInt(v, '--limit'), 25)
         .option('--offset <n>', 'Pagination offset', (v) => parseNonNegativeInt(v, '--offset'), 0)
         .option('--unread', 'Return only unread emails', false)
-        .option('--after <iso>', 'Only include emails received on or after this ISO 8601 date')
-        .option('--before <iso>', 'Only include emails received on or before this ISO 8601 date')
+        .option('--after <iso>', 'Only include emails received on or after this ISO 8601 date (naked ISO = local time; add Z or offset for UTC/explicit zone)')
+        .option('--before <iso>', 'Only include emails received on or before this ISO 8601 date (naked ISO = local time; add Z or offset for UTC/explicit zone)')
         .action((opts: { folder: number; limit: number; offset: number; unread: boolean; after?: string; before?: string }) => {
             try {
                 const params: ListEmailsParams = {
@@ -110,8 +110,8 @@ export function buildMailCommand(runtime: Runtime, getOutput: () => OutputOption
         .requiredOption('-f, --folder <id>', 'Folder id', (v) => parsePositiveInt(v, '--folder'))
         .option('--limit <n>', 'Maximum results (1-100)', (v) => parsePositiveInt(v, '--limit'), 25)
         .option('--offset <n>', 'Pagination offset', (v) => parseNonNegativeInt(v, '--offset'), 0)
-        .option('--after <iso>', 'Only include emails received on or after this ISO 8601 date')
-        .option('--before <iso>', 'Only include emails received on or before this ISO 8601 date')
+        .option('--after <iso>', 'Only include emails received on or after this ISO 8601 date (naked ISO = local time; add Z or offset for UTC/explicit zone)')
+        .option('--before <iso>', 'Only include emails received on or before this ISO 8601 date (naked ISO = local time; add Z or offset for UTC/explicit zone)')
         .action((opts: { folder: number; limit: number; offset: number; after?: string; before?: string }) => {
             try {
                 const params: ListEmailsParams = {
@@ -171,8 +171,8 @@ export function buildMailCommand(runtime: Runtime, getOutput: () => OutputOption
         .option('-f, --folder <id>', 'Limit search to a folder', (v) => parsePositiveInt(v, '--folder'))
         .option('--limit <n>', 'Maximum results (1-200)', (v) => parsePositiveInt(v, '--limit'), 25)
         .option('--offset <n>', 'Pagination offset', (v) => parseNonNegativeInt(v, '--offset'), 0)
-        .option('--after <iso>', 'Only include emails received on or after this ISO 8601 date')
-        .option('--before <iso>', 'Only include emails received on or before this ISO 8601 date')
+        .option('--after <iso>', 'Only include emails received on or after this ISO 8601 date (naked ISO = local time; add Z or offset for UTC/explicit zone)')
+        .option('--before <iso>', 'Only include emails received on or before this ISO 8601 date (naked ISO = local time; add Z or offset for UTC/explicit zone)')
         .action((query: string, opts: { folder?: number; limit: number; offset: number; after?: string; before?: string }) => {
             try {
                 const params: SearchEmailsParams = {

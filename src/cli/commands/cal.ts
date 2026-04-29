@@ -29,8 +29,8 @@ export function buildCalCommand(runtime: Runtime, getOutput: () => OutputOptions
     cmd.command('list')
         .description('List events, optionally bounded by a date range or limited to one calendar.')
         .option('-c, --calendar <id>', 'Calendar id to filter by', (v) => parsePositiveInt(v, '--calendar'))
-        .option('--start <iso>', 'Start of date range (ISO 8601)')
-        .option('--end <iso>', 'End of date range (ISO 8601)')
+        .option('--start <iso>', 'Start of date range (naked ISO = local time; add Z or offset for UTC/explicit zone)')
+        .option('--end <iso>', 'End of date range (naked ISO = local time; add Z or offset for UTC/explicit zone)')
         .option('--days <n>', 'Convenience: list events from now through N days ahead', (v) => parsePositiveInt(v, '--days'))
         .option('--limit <n>', 'Maximum events to return (1-100)', (v) => parsePositiveInt(v, '--limit'), 25)
         .option('--offset <n>', 'Pagination offset', (v) => parseNonNegativeInt(v, '--offset'), 0)
@@ -78,8 +78,8 @@ export function buildCalCommand(runtime: Runtime, getOutput: () => OutputOptions
         .description('Search events by title.')
         .option('--limit <n>', 'Maximum results (1-100)', (v) => parsePositiveInt(v, '--limit'), 25)
         .option('--offset <n>', 'Pagination offset', (v) => parseNonNegativeInt(v, '--offset'), 0)
-        .option('--after <iso>', 'Only events starting on or after this ISO 8601 date')
-        .option('--before <iso>', 'Only events starting on or before this ISO 8601 date')
+        .option('--after <iso>', 'Only events starting on or after this ISO 8601 date (naked ISO = local time; add Z or offset for UTC/explicit zone)')
+        .option('--before <iso>', 'Only events starting on or before this ISO 8601 date (naked ISO = local time; add Z or offset for UTC/explicit zone)')
         .action((query: string, opts: { limit: number; offset: number; after?: string; before?: string }) => {
             try {
                 const params: SearchEventsParams = {
@@ -100,8 +100,8 @@ export function buildCalCommand(runtime: Runtime, getOutput: () => OutputOptions
     cmd.command('create')
         .description('Create a new calendar event.')
         .requiredOption('--subject <text>', 'Event title')
-        .requiredOption('--start <iso>', 'Start date in ISO 8601')
-        .requiredOption('--end <iso>', 'End date in ISO 8601')
+        .requiredOption('--start <iso>', 'Start date (naked ISO = local time; add Z or offset for UTC/explicit zone)')
+        .requiredOption('--end <iso>', 'End date (naked ISO = local time; add Z or offset for UTC/explicit zone)')
         .option('--calendar <id>', 'Calendar id (default calendar if omitted)', (v) => parsePositiveInt(v, '--calendar'))
         .option('--location <text>', 'Event location')
         .option('--description <text>', 'Description (use --description-file for newline-heavy content)')
