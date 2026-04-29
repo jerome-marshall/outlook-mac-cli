@@ -710,13 +710,31 @@ tell application "Microsoft Outlook"
     set eCalId to id of calendar of e
   end try
 
-  -- Get attendees
+  -- Get attendees.
+  --
+  -- Each attendee's 'email address' property is an AppleScript record
+  -- (with fields 'name' and 'address'), not a reference, so chained
+  -- access like 'email address of a as text' raises "Can't make ... into
+  -- type Unicode text" and the whole list comes back empty. The attendee
+  -- object also doesn't expose 'name' directly -- the name lives inside
+  -- the email-address record. Bind the record to a local variable, read
+  -- 'name' and 'address' from it, and wrap each iteration in its own try
+  -- so a single malformed attendee doesn't take the rest down.
   set attendeeList to ""
   try
     repeat with a in attendees of e
-      set aEmail to email address of a
-      set aName to name of a
-      set attendeeList to attendeeList & aEmail & "|" & aName & ","
+      try
+        set em to email address of a
+        set aName to ""
+        try
+          set aName to name of em
+        end try
+        set aAddr to ""
+        try
+          set aAddr to address of em
+        end try
+        set attendeeList to attendeeList & aAddr & "|" & aName & ","
+      end try
     end repeat
   end try
 

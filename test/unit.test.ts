@@ -36,6 +36,7 @@ import {
   searchEvents,
   searchNotes,
   listEvents,
+  getEvent,
   buildAppleScriptDateVar,
   sendEmail,
   setMessageCategories,
@@ -645,6 +646,43 @@ describe('Date filtering in searchEvents', () => {
   it('extends whose clause with both after and before', () => {
     const script = searchEvents('standup', 10, 0, '2025-01-01T00:00:00', '2025-12-31T23:59:59');
     expect(script).toContain('subject contains "standup" and start time ≥ afterDate and start time ≤ beforeDate');
+  });
+});
+
+// =============================================================================
+// getEvent attendee extraction
+// =============================================================================
+
+describe('getEvent attendee extraction', () => {
+  // Regression: each attendee's `email address` property is an AppleScript
+  // record containing `name` and `address` — chained access (`email address
+  // of a as text`, `name of a`) raises "Can't make … into type Unicode text"
+  // and the whole attendee list comes back empty. Fix is to bind the record
+  // to a local variable, then read `name`/`address` from the bound record,
+  // and to wrap each iteration in its own try so one bad attendee can't
+  // poison the rest.
+  it('binds email address record to a local variable', () => {
+    const script = getEvent(123);
+    expect(script).toContain('set em to email address of a');
+    expect(script).toContain('set aName to name of em');
+    expect(script).toContain('set aAddr to address of em');
+  });
+
+  it('does NOT use chained property access on attendees', () => {
+    const script = getEvent(123);
+    expect(script).not.toContain('set aEmail to email address of a');
+    expect(script).not.toMatch(/set\s+\w+\s+to\s+name of a\b/);
+  });
+
+  it('wraps each iteration in its own try block', () => {
+    const script = getEvent(123);
+    // Two `try` blocks expected within the attendee loop: the outer one
+    // around `attendees of e` (covers a missing-attendees property) and an
+    // inner one around each iteration (so one bad attendee can't kill the
+    // rest).
+    const repeatBody = script.split('repeat with a in attendees of e')[1] ?? '';
+    const innerTryBlocks = (repeatBody.match(/try/g) ?? []).length;
+    expect(innerTryBlocks).toBeGreaterThanOrEqual(2);
   });
 });
 
