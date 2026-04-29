@@ -38,6 +38,12 @@ olk cal list --days 7 --table
 
 Every command supports `--help` with usage examples.
 
+## Agent skill
+
+This repository includes a bundled Cursor/Claude skill at [`skills/outlook-cli/SKILL.md`](./skills/outlook-cli/SKILL.md). Install or copy that skill into your agent skills directory when you want agents to use `olk` directly for Outlook workflows.
+
+The skill documents the safe `olk doctor --json` startup check, read/write command recipes, destructive-operation approval flow, and when agents should prefer `--toon` for prompt-ready context versus `--json` for code parsing.
+
 ## Output contract
 
 By default `olk` prints compact JSON on stdout and JSON errors on stderr. Four formats are available:
