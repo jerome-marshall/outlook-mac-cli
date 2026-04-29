@@ -73,6 +73,8 @@ Errors always envelope as:
 
 A non-zero exit code accompanies every error envelope.
 
+### TOON output for agents
+
 Use `--json` when the output will be parsed in code (`jq`, Python's built-in `json`, shell scripts). Use `--toon` when the raw output will be fed verbatim into an LLM or sub-agent prompt, where repeated JSON keys are expensive tokens. Both formats describe the same `{ ok, data }` shape; errors are always JSON regardless of the requested format.
 
 For agent workflows, `--toon` lets the CLI produce prompt-ready context directly:
