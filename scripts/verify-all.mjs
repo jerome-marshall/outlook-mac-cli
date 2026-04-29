@@ -106,6 +106,29 @@ section('Discovery + meta');
 }
 
 // ---------------------------------------------------------------------------
+// Defensive cleanup: sweep any leftover `olk-verify-*` folders from previous
+// (possibly interrupted) runs before exercising the folder lifecycle below.
+// Older versions of this script and older versions of `olk folder confirm-delete`
+// only soft-deleted folders to "Deleted Items"; leftovers are harmless but
+// noisy when listing folders, so we eat them here.
+// ---------------------------------------------------------------------------
+{
+    const folders = olk(['mail', 'folders']);
+    const orphans = (folders.parsed?.data?.items ?? [])
+        .filter((f) => typeof f?.name === 'string' && f.name.startsWith('olk-verify-'));
+    for (const orphan of orphans) {
+        const prep = olk(['folder', 'prepare-delete', String(orphan.id)]);
+        const tokenId = prep.parsed?.data?.token_id;
+        if (typeof tokenId === 'string') {
+            olk(['folder', 'confirm-delete', tokenId, String(orphan.id)]);
+        }
+    }
+    if (orphans.length > 0) {
+        console.log(`(swept ${orphans.length} orphan olk-verify-* folder(s) from previous runs)`);
+    }
+}
+
+// ---------------------------------------------------------------------------
 // 2. Accounts
 // ---------------------------------------------------------------------------
 section('Accounts');

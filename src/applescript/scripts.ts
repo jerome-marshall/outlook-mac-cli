@@ -15,6 +15,30 @@ import { isoToDateComponents } from '../utils/dates.js';
 // Shared AppleScript Blocks
 // =============================================================================
 
+/**
+ * AppleScript block: extract sender of message variable `m` into `mSender` (address)
+ * and `mSenderName` (display name).
+ *
+ * On modern Outlook for Mac the `sender` property is a flat AppleScript record,
+ * not an `email address` reference, so chained property access like
+ * `address of sender of m` raises "Can't make ... into type Unicode text" and
+ * silently leaves the field empty. Binding `sender of m` to a local variable
+ * first, then reading `address`/`name` from the record, works on both classic
+ * and modern Outlook.
+ */
+const SENDER_EXTRACT_BLOCK = `
+      set mSender to ""
+      set mSenderName to ""
+      try
+        set sObj to sender of m
+        try
+          set mSender to address of sObj
+        end try
+        try
+          set mSenderName to name of sObj
+        end try
+      end try`;
+
 /** AppleScript block: read todo flag of message variable `m`, store in `mFlag` as "0"/"1"/"2" */
 const FLAG_STATUS_BLOCK = `
       set mFlag to "0"
@@ -230,14 +254,7 @@ ${dateVarBlock}${fetchBlock}
       set m to item i of allMsgs
       set mId to id of m
       set mSubject to subject of m
-      set mSender to ""
-      try
-        set mSender to address of sender of m
-      end try
-      set mSenderName to ""
-      try
-        set mSenderName to name of sender of m
-      end try
+${SENDER_EXTRACT_BLOCK}
       set mDate to ""
       try
         set mDate to time received of m as «class isot» as string
@@ -341,14 +358,7 @@ ${dateVarBlock}
         set m to item i of subjectMatches
         set mId to id of m
         set mSubject to subject of m
-        set mSender to ""
-        try
-          set mSender to address of sender of m
-        end try
-        set mSenderName to ""
-        try
-          set mSenderName to name of sender of m
-        end try
+${SENDER_EXTRACT_BLOCK}
         set mDate to ""
         try
           set mDate to time received of m as «class isot» as string
@@ -389,18 +399,21 @@ ${FLAG_STATUS_BLOCK}
         set m to item i of allMsgs
         set mId to id of m
         set mSender to ""
+        set mSenderName to ""
         try
-          set mSender to address of sender of m
+          set sObj to sender of m
+          try
+            set mSender to address of sObj
+          end try
+          try
+            set mSenderName to name of sObj
+          end try
         end try
         if mSender contains "${escapedQuery}" then${phase2DateCheck}
           if phase2Skipped < phase2Skip then
             set phase2Skipped to phase2Skipped + 1
           else
             set mSubject to subject of m
-            set mSenderName to ""
-            try
-              set mSenderName to name of sender of m
-            end try
             set mDate to ""
             try
               set mDate to time received of m as «class isot» as string
@@ -429,14 +442,7 @@ tell application "Microsoft Outlook"
   set m to message id ${messageId}
   set mId to id of m
   set mSubject to subject of m
-  set mSender to ""
-  try
-    set mSender to address of sender of m
-  end try
-  set mSenderName to ""
-  try
-    set mSenderName to name of sender of m
-  end try
+${SENDER_EXTRACT_BLOCK}
   set mDateReceived to ""
   try
     set mDateReceived to time received of m as «class isot» as string
@@ -1584,12 +1590,24 @@ end tell
 }
 /**
  * Deletes a mail folder.
+ *
+ * Outlook's AppleScript `delete` semantics for a folder mirror the UI:
+ *   - First call on a folder outside `Deleted Items` moves it to `Deleted Items`.
+ *   - Second call on a folder already inside `Deleted Items` permanently removes it.
+ *
+ * The CLI's prepare/confirm-delete contract promises permanent removal, so this
+ * issues two delete calls. The second is wrapped in `try` because if the first
+ * call already permanently deleted the folder (because it was already in trash),
+ * looking the folder up by ID will fail.
  */
 export function deleteMailFolder(folderId: number): string {
     return `
 tell application "Microsoft Outlook"
   set f to mail folder id ${folderId}
   delete f
+  try
+    delete (mail folder id ${folderId})
+  end try
   return "ok"
 end tell
 `;
