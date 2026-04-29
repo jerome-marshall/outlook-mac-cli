@@ -1,0 +1,23 @@
+outlook-mac-cli
+Copyright (c) 2026 Jerome Marshall
+
+================================================================================
+Third-party attribution
+================================================================================
+
+This product is derived from `mcp-outlook-applescript` by Hasan Imam,
+licensed under the MIT License.
+
+  - Project:   mcp-outlook-applescript
+  - Author:    Hasan Imam <hasan.imam.w@gmail.com>
+  - Source:    https://github.com/hasan-imam/mcp-outlook-applescript
+  - License:   MIT (see LICENSE-UPSTREAM)
+  - Version:   v1.1.1 (commit at time of port: see opensrc cache)
+
+The AppleScript backend, parsers, repository abstractions, approval system,
+domain tool classes, and supporting utilities in this repository are a
+near-verbatim port from the upstream project. The MCP server entrypoint has
+been replaced with a CLI entrypoint (`olk`) and a disk-backed approval store
+to make the same surface area usable from a single-shot terminal binary.
+
+================================================================================

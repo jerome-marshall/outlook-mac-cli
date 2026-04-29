@@ -1,0 +1,50 @@
+{
+  "name": "outlook-mac-cli",
+  "version": "0.1.0",
+  "description": "Single-binary CLI for Microsoft Outlook on Mac. Mail, calendar, contacts, tasks, and notes from your terminal — backed by AppleScript, JSON-first, agent-friendly.",
+  "type": "module",
+  "bin": {
+    "olk": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist",
+    "NOTICE",
+    "LICENSE-UPSTREAM"
+  ],
+  "scripts": {
+    "build": "tsc && chmod +x dist/cli/index.js",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm test && npm run typecheck && npm run build",
+    "start": "node dist/cli/index.js",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "outlook",
+    "macos",
+    "cli",
+    "email",
+    "calendar",
+    "contacts",
+    "tasks",
+    "applescript",
+    "agent",
+    "automation"
+  ],
+  "author": "Jerome Marshall",
+  "license": "MIT",
+  "os": [
+    "darwin"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.3",
+    "typescript": "^5.8.3",
+    "vitest": "^4.0.18"
+  }
+}
