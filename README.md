@@ -40,11 +40,12 @@ Every command supports `--help` with usage examples.
 
 ## Output contract
 
-By default `olk` prints compact JSON on stdout and JSON errors on stderr. Three formats are available:
+By default `olk` prints compact JSON on stdout and JSON errors on stderr. Four formats are available:
 
 - `--json` (default) — pretty when stdout is a TTY, compact otherwise
 - `--ndjson` — one JSON object per line; for list results, each item is its own line
 - `--table` — column-aligned text for human reading
+- `--toon` — lossless [TOON](https://toonformat.dev/) for token-efficient, agent-friendly LLM prompt consumption
 
 Successful payloads always envelope as:
 
@@ -65,6 +66,15 @@ Errors always envelope as:
 ```
 
 A non-zero exit code accompanies every error envelope.
+
+Use `--json` when the output will be parsed in code (`jq`, Python's built-in `json`, shell scripts). Use `--toon` when the raw output will be fed verbatim into an LLM or sub-agent prompt, where repeated JSON keys are expensive tokens. Both formats describe the same `{ ok, data }` shape; errors are always JSON regardless of the requested format.
+
+For agent workflows, `--toon` lets the CLI produce prompt-ready context directly:
+
+```bash
+olk cal list --days 7 --toon > /tmp/calendar.toon
+# Paste /tmp/calendar.toon into the next LLM prompt as calendar context.
+```
 
 ## Destructive operations
 
@@ -92,6 +102,7 @@ echo "12345,12346,12347" | olk mail prepare-batch-delete
 
 ```bash
 olk config set defaultOutput table
+olk config set defaultOutput toon
 olk config set defaultFolder 113
 olk config get
 ```

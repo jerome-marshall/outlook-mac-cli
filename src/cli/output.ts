@@ -2,11 +2,12 @@
  * Output formatting for the olk CLI.
  *
  * Every command writes either a success envelope to stdout or an error envelope
- * to stderr, then exits. Three output modes are supported:
+ * to stderr, then exits. Four output modes are supported:
  *
  *   - `json`   — pretty-printed JSON when stdout is a TTY, compact otherwise (default)
  *   - `ndjson` — one JSON object per line; for list responses, each item becomes its own line
  *   - `table`  — column-aligned text for human consumption
+ *   - `toon`   — lossless TOON for token-efficient LLM prompt consumption
  *
  * The shape of the success envelope is the public contract with agents:
  *   `{ ok: true, data: <resource> }`
@@ -16,9 +17,10 @@
  */
 
 import { wrapError, type ErrorCode } from '../utils/errors.js';
+import { encodeToon } from './toon.js';
 
 /** Output formats supported by every olk command. */
-export type OutputFormat = 'json' | 'ndjson' | 'table';
+export type OutputFormat = 'json' | 'ndjson' | 'table' | 'toon';
 
 /** Shared CLI-wide options threaded through every command. */
 export interface OutputOptions {
@@ -89,6 +91,10 @@ export function emitSuccess<T>(data: T, options: OutputOptions): void {
         return;
     }
     const envelope: SuccessEnvelope<T> = { ok: true, data };
+    if (options.format === 'toon') {
+        stream.write(`${encodeToon(envelope)}\n`);
+        return;
+    }
     stream.write(`${stringifyJson(envelope, stream)}\n`);
 }
 

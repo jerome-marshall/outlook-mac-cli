@@ -52,6 +52,7 @@ export function buildProgram(runtimeFactory: () => Runtime = () => new Runtime()
         .option('--json', 'Emit pretty/compact JSON (default)')
         .option('--ndjson', 'Emit one JSON object per line; lists yield one item per line')
         .option('--table', 'Emit a column-aligned text table for human consumption')
+        .option('--toon', 'Emit agent-friendly TOON for token-efficient LLM prompt consumption')
         .option('--no-color', 'Disable ANSI color codes (currently a no-op; reserved for future use)')
         .showHelpAfterError()
         .helpOption('-h, --help', 'Display help for this command');
@@ -64,10 +65,11 @@ export function buildProgram(runtimeFactory: () => Runtime = () => new Runtime()
     const getOutput = (): OutputOptions => {
         const opts = program.opts();
         const format: OutputFormat =
-            opts['ndjson'] === true ? 'ndjson'
-                : opts['table'] === true ? 'table'
-                    : opts['json'] === true ? 'json'
-                        : defaults.format;
+            opts['toon'] === true ? 'toon'
+                : opts['ndjson'] === true ? 'ndjson'
+                    : opts['table'] === true ? 'table'
+                        : opts['json'] === true ? 'json'
+                            : defaults.format;
         const noColor = opts['color'] === false || defaults.noColor;
         return { format, noColor };
     };
@@ -87,7 +89,7 @@ export function buildProgram(runtimeFactory: () => Runtime = () => new Runtime()
 }
 
 function resolveDefaultFormat(value: string | undefined): OutputFormat {
-    if (value === 'json' || value === 'ndjson' || value === 'table') return value;
+    if (value === 'json' || value === 'ndjson' || value === 'table' || value === 'toon') return value;
     return 'json';
 }
 

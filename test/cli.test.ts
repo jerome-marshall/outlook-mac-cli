@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { decode } from '@toon-format/toon';
 
 import { ApprovalTokenManager } from '../src/approval/token-manager.js';
 import { DiskTokenStore, approvalsDir } from '../src/cli/approval-runtime.js';
@@ -27,6 +28,7 @@ import {
     splitCsv,
 } from '../src/cli/argv.js';
 import { configPath, loadConfig, saveConfig, setConfigValue, unsetConfigValue } from '../src/cli/config.js';
+import { buildProgram } from '../src/cli/index.js';
 import { emitError, emitSuccess } from '../src/cli/output.js';
 import { ValidationError } from '../src/utils/errors.js';
 
@@ -204,6 +206,11 @@ describe('config', () => {
         expect(JSON.parse(readFileSync(configPath(), 'utf8'))).toEqual({ defaultOutput: 'ndjson' });
     });
 
+    it('accepts toon as a default output format', () => {
+        setConfigValue('defaultOutput', 'toon');
+        expect(loadConfig().defaultOutput).toBe('toon');
+    });
+
     it('rejects invalid values', () => {
         expect(() => setConfigValue('defaultOutput', 'csv')).toThrow(ValidationError);
         expect(() => setConfigValue('defaultFolder', '-1')).toThrow(ValidationError);
@@ -243,6 +250,74 @@ describe('output formatter', () => {
         const lines = writes.join('').trim().split('\n');
         expect(lines).toHaveLength(1);
         expect(JSON.parse(lines[0])).toEqual({ ok: true, data: { count: 3 } });
+    });
+
+    it('emits a lossless TOON success envelope to stdout', () => {
+        const writes: string[] = [];
+        const original = process.stdout.write.bind(process.stdout);
+        process.stdout.write = ((chunk: unknown) => {
+            writes.push(String(chunk));
+            return true;
+        }) as typeof process.stdout.write;
+        try {
+            emitSuccess({
+                items: [
+                    { id: 1, subject: 'Hello "TOON"', senderAddress: 'alice@example.com', isRead: false },
+                    { id: 2, subject: 'Lunch?', senderAddress: 'bob@example.com', isRead: true },
+                ],
+                count: 2,
+                hasMore: false,
+            }, { format: 'toon', noColor: true });
+        }
+        finally {
+            process.stdout.write = original;
+        }
+        expect(decode(writes.join('').trim())).toEqual({
+            ok: true,
+            data: {
+                items: [
+                    { id: 1, subject: 'Hello "TOON"', senderAddress: 'alice@example.com', isRead: false },
+                    { id: 2, subject: 'Lunch?', senderAddress: 'bob@example.com', isRead: true },
+                ],
+                count: 2,
+                hasMore: false,
+            },
+        });
+    });
+
+    it('preserves nested arrays and null fields in TOON output', () => {
+        const writes: string[] = [];
+        const original = process.stdout.write.bind(process.stdout);
+        process.stdout.write = ((chunk: unknown) => {
+            writes.push(String(chunk));
+            return true;
+        }) as typeof process.stdout.write;
+        try {
+            emitSuccess({
+                id: 42,
+                title: 'Design review',
+                location: null,
+                attendees: [
+                    { name: 'Alice', email: 'alice@example.com', status: 'accepted' },
+                    { name: null, email: 'room@example.com', status: 'none' },
+                ],
+            }, { format: 'toon', noColor: true });
+        }
+        finally {
+            process.stdout.write = original;
+        }
+        expect(decode(writes.join('').trim())).toEqual({
+            ok: true,
+            data: {
+                id: 42,
+                title: 'Design review',
+                location: null,
+                attendees: [
+                    { name: 'Alice', email: 'alice@example.com', status: 'accepted' },
+                    { name: null, email: 'room@example.com', status: 'none' },
+                ],
+            },
+        });
     });
 
     it('NDJSON streams one item per line for list payloads', () => {
@@ -285,6 +360,28 @@ describe('output formatter', () => {
         expect(env.error.message).toBe('bad input');
     });
 
+    it('keeps error envelopes as JSON even when TOON is requested', () => {
+        const writes: string[] = [];
+        const original = process.stderr.write.bind(process.stderr);
+        process.stderr.write = ((chunk: unknown) => {
+            writes.push(String(chunk));
+            return true;
+        }) as typeof process.stderr.write;
+        try {
+            expect(emitError(new ValidationError('bad input'), { format: 'toon', noColor: true })).toBe(1);
+        }
+        finally {
+            process.stderr.write = original;
+        }
+        expect(JSON.parse(writes.join('').trim())).toEqual({
+            ok: false,
+            error: {
+                code: 'VALIDATION_ERROR',
+                message: 'bad input',
+            },
+        });
+    });
+
     it('table mode renders a header and aligned rows for list payloads', () => {
         const writes: string[] = [];
         const original = process.stdout.write.bind(process.stdout);
@@ -310,5 +407,40 @@ describe('output formatter', () => {
         expect(out).toContain('name');
         expect(out).toContain('Alpha');
         expect(out).toContain('Beta');
+    });
+});
+
+// =============================================================================
+// CLI program
+// =============================================================================
+
+describe('CLI program', () => {
+    it('honors --toon as a root output flag', async () => {
+        const writes: string[] = [];
+        const original = process.stdout.write.bind(process.stdout);
+        process.stdout.write = ((chunk: unknown) => {
+            writes.push(String(chunk));
+            return true;
+        }) as typeof process.stdout.write;
+        try {
+            const program = buildProgram();
+            program.exitOverride();
+            program.configureOutput({
+                writeOut: () => undefined,
+                writeErr: () => undefined,
+            });
+            await program.parseAsync(['node', 'olk', '--toon', 'version']);
+        }
+        finally {
+            process.stdout.write = original;
+        }
+        expect(decode(writes.join('').trim())).toEqual({
+            ok: true,
+            data: {
+                cli: '0.1.0',
+                upstream: '1.1.1',
+                upstreamRepo: 'https://github.com/hasan-imam/mcp-outlook-applescript',
+            },
+        });
     });
 });

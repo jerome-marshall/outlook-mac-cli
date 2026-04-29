@@ -14,7 +14,7 @@ import { ValidationError } from '../utils/errors.js';
 
 /** Shape of the on-disk config file. All fields are optional. */
 export interface Config {
-    defaultOutput?: 'json' | 'ndjson' | 'table';
+    defaultOutput?: 'json' | 'ndjson' | 'table' | 'toon';
     defaultFolder?: number;
     defaultAccount?: number;
 }
@@ -71,8 +71,8 @@ export function setConfigValue(key: string, rawValue: string): Config {
     const config = loadConfig();
     switch (key) {
         case 'defaultOutput': {
-            if (rawValue !== 'json' && rawValue !== 'ndjson' && rawValue !== 'table') {
-                throw new ValidationError(`defaultOutput must be one of: json, ndjson, table (got ${JSON.stringify(rawValue)})`);
+            if (rawValue !== 'json' && rawValue !== 'ndjson' && rawValue !== 'table' && rawValue !== 'toon') {
+                throw new ValidationError(`defaultOutput must be one of: json, ndjson, table, toon (got ${JSON.stringify(rawValue)})`);
             }
             config.defaultOutput = rawValue;
             break;
